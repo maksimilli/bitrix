@@ -1,10 +1,15 @@
+<script>
+    // Защита от ошибки 405 на GitHub Pages при POST-запросе от Битрикс24
+    if (window.location.search.indexOf('redirected=1') === -1 && document.referrer.indexOf('bitrix') !== -1) {
+        window.location.replace(window.location.href.split('?')[0] + '?redirected=1');
+    }
+</script>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Согласование</title>
-    <!-- Подключаем библиотеку Bitrix24 JS SDK -->
     <script src="https://api.bitrix24.com/api/v1/"></script>
     
     <style>
@@ -43,15 +48,11 @@
             transition: background-color 0.2s, transform 0.1s;
             color: #fff;
         }
-        .btn:active {
-            transform: scale(0.98);
-        }
-        .btn-success { background-color: #2fc6f6; } /* Голубая/Зеленая */
+        .btn:active { transform: scale(0.98); }
+        .btn-success { background-color: #2fc6f6; }
         .btn-success:hover { background-color: #1ab2e2; }
-        
-        .btn-warning { background-color: #f7a700; } /* Оранжевая */
+        .btn-warning { background-color: #f7a700; }
         .btn-warning:hover { background-color: #df9600; }
-        
         .status-msg {
             margin-top: 15px;
             padding: 10px;
@@ -77,50 +78,37 @@
 
 <script>
     // ==========================================
-    // ⚙️ НАСТРОЙКИ (ПОДСТАВЬТЕ ВАШИ ДАННЫЕ)
+    // ⚙️ НАСТРОЙКИ
     // ==========================================
     var SMART_PROCESS_ID = 1070; // 👈 ВАШ ID СМАРТ-ПРОЦЕССА
 
-    // Коды стадий (вставьте ваши ID из Канбана)
-    var STAGE_APPROVED_GD = 'DT1070_26:CLIENT'; // 👈 Стадия "Согласовано с ГД"
-    var STAGE_CORRECTION  = 'DT1070_26:UC_GDBXKW';      // 👈 Стадия "На корректировку"
+    var STAGE_APPROVED_GD = 'DT1070_26:CLIENT'; // 👈 ВАША СТАДИЯ "Согласовано с ГД"
+    var STAGE_CORRECTION  = 'DT1070_26:UC_GDBXKW';      // 👈 ВАША СТАДИЯ "На корректировку"
 
     var currentEntityId = null;
 
-    // Инициализация Битрикс24
     BX24.init(function() {
-        // -------------------------------------------------------------
-        // 🚀 АВТО-РЕГИСТРАЦИЯ ВКЛАДОК ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
-        // -------------------------------------------------------------
+        // Выполняем автоматическую регистрацию вкладок при запуске приложения
         BX24.callMethod('placement.bind', {
             PLACEMENT: 'CRM_DYNAMIC_' + SMART_PROCESS_ID + '_DETAIL_TAB',
             HANDLER: 'https://maksimilli.github.io/bitrix/approval.html',
             TITLE: 'Согласование'
-        }, function(res) {
-            console.log('Привязка к Смарт-процессу:', res);
         });
 
         BX24.callMethod('placement.bind', {
             PLACEMENT: 'TASK_CARD_TAB',
             HANDLER: 'https://maksimilli.github.io/bitrix/approval.html',
             TITLE: 'Согласование'
-        }, function(res) {
-            console.log('Привязка к Задачам:', res);
         });
 
-        // -------------------------------------------------------------
-        // Определение ID сущности из контекста
-        // -------------------------------------------------------------
         var options = BX24.placement.info();
         if (options && options.options) {
             currentEntityId = options.options.ID || options.options.ENTITY_ID;
         }
         
-        // Подгоняем высоту фрейма Битрикса под контент
         BX24.resizeWindow(document.body.scrollWidth, 200);
     });
 
-    // Функция отображения уведомлений
     function showStatus(text, type) {
         var el = document.getElementById('status');
         el.className = 'status-msg status-' + type;
@@ -128,7 +116,6 @@
         el.style.display = 'block';
     }
 
-    // Обработка нажатий на кнопки
     function processApproval(action) {
         if (!currentEntityId) {
             showStatus('Ошибка: не удалось определить ID элемента.', 'error');
@@ -140,15 +127,12 @@
         var targetStage = (action === 'approve_gd') ? STAGE_APPROVED_GD : STAGE_CORRECTION;
         var messageText = (action === 'approve_gd') ? 'Согласовано с ГД' : 'Отправлено на корректировку';
 
-        // Обновляем стадию элемента Смарт-процесса
         BX24.callMethod(
             'crm.item.update',
             {
                 entityTypeId: SMART_PROCESS_ID,
                 id: currentEntityId,
-                fields: {
-                    stageId: targetStage
-                }
+                fields: { stageId: targetStage }
             },
             function(result) {
                 if (result.error()) {
