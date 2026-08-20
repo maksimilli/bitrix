@@ -44,9 +44,18 @@
         var currentTaskId = null;
 
         BX24.init(function() {
-            var info = BX24.placement.info();
+            BX24.callMethod('placement.bind', {
+                PLACEMENT: 'CRM_DYNAMIC_18_DETAIL_TAB', // Укажите ваш ID смарт-процесса
+                HANDLER: 'https://maksimilli.github.io/bitrix/approval.html',
+                TITLE: 'Согласование'
+            });
             
-            // Если открыли из Задачи
+        BX24.callMethod('placement.bind', {
+            PLACEMENT: 'TASK_CARD_TAB',
+            HANDLER: 'https://maksimilli.github.io/bitrix/approval.html',
+            TITLE: 'Согласование'
+        });
+        var info = BX24.placement.info();  
             if (info.placement === 'TASK_CARD_TAB') {
                 currentTaskId = info.options.TASK_ID;
                 findSmartProcessByTask(currentTaskId);
