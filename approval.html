@@ -2,143 +2,164 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <!-- Подключаем REST API Битрикс24 -->
-    <script src="//api.bitrix24.com/api/v1/"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Согласование</title>
+    <!-- Подключаем библиотеку Bitrix24 JS SDK -->
+    <script src="https://api.bitrix24.com/api/v1/"></script>
+    
     <style>
-        body { font-family: Arial, sans-serif; margin: 15px; padding: 0; background: #fff; }
-        .btn-group { display: flex; gap: 10px; }
-        .btn { padding: 10px 20px; border: none; border-radius: 4px; color: #fff; font-weight: bold; cursor: pointer; font-size: 13px; }
-        .btn-green { background-color: #2fc6f6; } /* Согласовать */
-        .btn-orange { background-color: #f5a623; } /* На корректировку */
-        .btn-red { background-color: #ff5752; }    /* Отклонить */
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .status { margin-top: 12px; font-size: 13px; color: #555; }
-        .hidden { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            background-color: #f8f9fa;
+            margin: 0;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        h3 {
+            margin-top: 0;
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            color: #fff;
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn-success { background-color: #2fc6f6; } /* Голубая/Зеленая */
+        .btn-success:hover { background-color: #1ab2e2; }
+        
+        .btn-warning { background-color: #f7a700; } /* Оранжевая */
+        .btn-warning:hover { background-color: #df9600; }
+        
+        .status-msg {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            display: none;
+            font-size: 14px;
+        }
+        .status-info { background: #e3f2fd; color: #0d47a1; }
+        .status-success { background: #e8f5e9; color: #1b5e20; }
+        .status-error { background: #ffebee; color: #c62828; }
     </style>
 </head>
 <body>
 
-    <div id="loader" class="status">Загрузка панели...</div>
-
-    <div id="content" class="hidden">
-        <div class="btn-group">
-            <button id="btn-approve" class="btn btn-green">Согласовать</button>
-            <button id="btn-correct" class="btn btn-orange">На корректировку</button>
-            <button id="btn-reject" class="btn btn-red">Отклонить</button>
-        </div>
-        <div id="msg" class="status"></div>
+<div class="container">
+    <h3>Панель согласования</h3>
+    <div class="btn-group">
+        <button class="btn btn-success" onclick="processApproval('approve_gd')">Согласовать с ГД</button>
+        <button class="btn btn-warning" onclick="processApproval('correction')">На корректировку</button>
     </div>
+    <div id="status" class="status-msg"></div>
+</div>
 
-    <script>
-        // ==========================================
-        //  НАСТРОЙКИ (Укажите свои ID)
-        // ==========================================
-        var SMART_PROCESS_ID = 18; // ID вашего Смарт-процесса
+<script>
+    // ==========================================
+    // ⚙️ НАСТРОЙКИ (ПОДСТАВЬТЕ ВАШИ ДАННЫЕ)
+    // ==========================================
+    var SMART_PROCESS_ID = 1070; // 👈 ВАШ ID СМАРТ-ПРОЦЕССА
 
-        // Системные коды стадий (подробнее в Шаге 2)
-        var STAGE_GD = 'DT1070_26:CLIENT'; // Стадия "Согласование у ГД"
-        var STAGE_CORRECT = 'DT1070_26:UC_GDBXKW'; // Стадия "На корректировке"
-        // ==========================================
+    // Коды стадий (вставьте ваши ID из Канбана)
+    var STAGE_APPROVED_GD = 'DT1070_26:CLIENT'; // 👈 Стадия "Согласовано с ГД"
+    var STAGE_CORRECTION  = 'DT1070_26:UC_GDBXKW';      // 👈 Стадия "На корректировку"
 
-        var currentSmartId = null;
-        var currentTaskId = null;
+    var currentEntityId = null;
 
-        BX24.init(function() {
-            BX24.callMethod('placement.bind', {
-                PLACEMENT: 'CRM_DYNAMIC_18_DETAIL_TAB', // Укажите ваш ID смарт-процесса
-                HANDLER: 'https://maksimilli.github.io/bitrix/approval.html',
-                TITLE: 'Согласование'
-            });
-            
+    // Инициализация Битрикс24
+    BX24.init(function() {
+        // -------------------------------------------------------------
+        // 🚀 АВТО-РЕГИСТРАЦИЯ ВКЛАДОК ПРИ ЗАПУСКЕ ПРИЛОЖЕНИЯ
+        // -------------------------------------------------------------
+        BX24.callMethod('placement.bind', {
+            PLACEMENT: 'CRM_DYNAMIC_' + SMART_PROCESS_ID + '_DETAIL_TAB',
+            HANDLER: 'https://maksimilli.github.io/bitrix/approval.html',
+            TITLE: 'Согласование'
+        }, function(res) {
+            console.log('Привязка к Смарт-процессу:', res);
+        });
+
         BX24.callMethod('placement.bind', {
             PLACEMENT: 'TASK_CARD_TAB',
             HANDLER: 'https://maksimilli.github.io/bitrix/approval.html',
             TITLE: 'Согласование'
-        });
-        var info = BX24.placement.info();  
-            if (info.placement === 'TASK_CARD_TAB') {
-                currentTaskId = info.options.TASK_ID;
-                findSmartProcessByTask(currentTaskId);
-            } else {
-                // Если открыли из самого Смарт-процесса
-                currentSmartId = info.options.ID;
-                initWidget();
-            }
+        }, function(res) {
+            console.log('Привязка к Задачам:', res);
         });
 
-        // Находим смарт-процесс, связанный с задачей
-        function findSmartProcessByTask(taskId) {
-            BX24.callMethod('tasks.task.get', { id: taskId, select: ['ID', 'UF_CRM_TASK'] }, function(res) {
-                if (res.error()) { showMsg('Ошибка: ' + res.error()); return; }
-                
-                var bindings = res.data().task.ufCrmTask || [];
-                var prefix = 'DYNAMIC_' + SMART_PROCESS_ID + '_';
+        // -------------------------------------------------------------
+        // Определение ID сущности из контекста
+        // -------------------------------------------------------------
+        var options = BX24.placement.info();
+        if (options && options.options) {
+            currentEntityId = options.options.ID || options.options.ENTITY_ID;
+        }
+        
+        // Подгоняем высоту фрейма Битрикса под контент
+        BX24.resizeWindow(document.body.scrollWidth, 200);
+    });
 
-                for (var i = 0; i < bindings.length; i++) {
-                    if (bindings[i].indexOf(prefix) === 0) {
-                        currentSmartId = bindings[i].replace(prefix, '');
-                        break;
-                    }
-                }
+    // Функция отображения уведомлений
+    function showStatus(text, type) {
+        var el = document.getElementById('status');
+        el.className = 'status-msg status-' + type;
+        el.innerText = text;
+        el.style.display = 'block';
+    }
 
-                if (currentSmartId) {
-                    initWidget();
-                } else {
-                    document.getElementById('loader').innerText = 'Эта задача не привязана к процессу согласования.';
-                }
-            });
+    // Обработка нажатий на кнопки
+    function processApproval(action) {
+        if (!currentEntityId) {
+            showStatus('Ошибка: не удалось определить ID элемента.', 'error');
+            return;
         }
 
-        function initWidget() {
-            document.getElementById('loader').classList.add('hidden');
-            document.getElementById('content').classList.remove('hidden');
+        showStatus('Обработка...', 'info');
 
-            document.getElementById('btn-approve').onclick = function() {
-                moveStage(STAGE_GD, 'Переведено на стадию "Согласование у ГД"');
-            };
-            document.getElementById('btn-correct').onclick = function() {
-                moveStage(STAGE_CORRECT, 'Переведено на стадию "На корректировке"');
-            };
-            document.getElementById('btn-reject').onclick = function() {
-                showMsg('Кнопка "Отклонить" нажата (действие настроим отдельно)');
-            };
-        }
+        var targetStage = (action === 'approve_gd') ? STAGE_APPROVED_GD : STAGE_CORRECTION;
+        var messageText = (action === 'approve_gd') ? 'Согласовано с ГД' : 'Отправлено на корректировку';
 
-        // Переключение стадии смарт-процесса
-        function moveStage(newStage, successText) {
-            toggleButtons(true);
-            showMsg('Сохранение...');
-
-            BX24.callMethod('crm.item.update', {
+        // Обновляем стадию элемента Смарт-процесса
+        BX24.callMethod(
+            'crm.item.update',
+            {
                 entityTypeId: SMART_PROCESS_ID,
-                id: currentSmartId,
-                fields: { stageId: newStage }
-            }, function(res) {
-                toggleButtons(false);
-                if (res.error()) {
-                    showMsg('Ошибка смены стадии: ' + res.error().ex.error_description);
-                } else {
-                    showMsg('Успешно: ' + successText);
-                    
-                    // Если кликали из задачи — добавляем комментарий
-                    if (currentTaskId) {
-                        BX24.callMethod('task.commentitem.add', [
-                            currentTaskId, 
-                            { POST_MESSAGE: 'Результат согласования: ' + successText }
-                        ]);
-                    }
+                id: currentEntityId,
+                fields: {
+                    stageId: targetStage
                 }
-            });
-        }
+            },
+            function(result) {
+                if (result.error()) {
+                    showStatus('Ошибка обновления: ' + result.error(), 'error');
+                } else {
+                    showStatus('Успешно: ' + messageText, 'success');
+                }
+            }
+        );
+    }
+</script>
 
-        function toggleButtons(disabled) {
-            var btns = document.querySelectorAll('.btn');
-            btns.forEach(function(b) { b.disabled = disabled; });
-        }
-
-        function showMsg(text) {
-            document.getElementById('msg').innerText = text;
-        }
-    </script>
 </body>
 </html>
