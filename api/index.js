@@ -7,8 +7,7 @@ export default function handler(req, res) {
     return res.status(200).end();
   }
 
-  res.status(200).send(`
-<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -17,16 +16,7 @@ export default function handler(req, res) {
     <style>
         body { margin: 0; padding: 5px; font-family: system-ui, -apple-system, sans-serif; }
         .btn-container { display: flex; gap: 8px; align-items: center; }
-        .btn {
-            border: none;
-            padding: 7px 14px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 12px;
-            cursor: pointer;
-            color: #fff;
-            transition: opacity 0.2s;
-        }
+        .btn { border: none; padding: 7px 14px; border-radius: 3px; font-weight: bold; font-size: 12px; cursor: pointer; color: #fff; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.85; }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-approve { background-color: #2fc6f6; }
@@ -46,9 +36,10 @@ export default function handler(req, res) {
     let taskId = null;
 
     BX24.init(function() {
-        const options = BX24.placement.info().options;
+        var options = BX24.placement.info().options;
         taskId = options ? options.taskId : null;
 
+        // Автоматическая регистрация кнопок при открытии страницы приложения
         BX24.callMethod(
             'placement.bind',
             {
@@ -57,23 +48,22 @@ export default function handler(req, res) {
                 'TITLE': 'Согласование'
             },
             function(res) {
-                console.log('Результат регистрации кнопок:', res);
+                console.log('РЕЗУЛЬТАТ РЕГИСТРАЦИИ КНОПОК:', res);
             }
         );
     });
 
     function setButtonsLoading(loading) {
-        document.querySelectorAll('.btn').forEach(btn => btn.disabled = loading);
+        document.querySelectorAll('.btn').forEach(function(btn) { btn.disabled = loading; });
     }
 
-    async function onDecision(type) {
+    function onDecision(type) {
         if (!taskId) {
             alert('Не найден ID задачи.');
             return;
         }
 
         let comment = '';
-
         if (type === 'NOTES') {
             comment = prompt('Укажите замечания к документу:');
             if (comment === null) return;
@@ -84,59 +74,55 @@ export default function handler(req, res) {
 
         setButtonsLoading(true);
 
-        try {
-            const taskData = await callMethod('tasks.task.get', { id: taskId, select: ['ID', 'UF_CRM_TASK'] });
-            const crmFields = taskData.task.ufCrmTask || [];
-            const smartBinding = crmFields.find(item => item.startsWith('T'));
+        BX24.callMethod('tasks.task.get', { id: taskId, select: ['ID', 'UF_CRM_TASK'] }, function(resTask) {
+            if (resTask.error()) {
+                alert('Ошибка получения задачи: ' + resTask.error());
+                setButtonsLoading(false);
+                return;
+            }
 
-            let statusText = '';
+            var taskData = resTask.data().task;
+            var crmFields = taskData.ufCrmTask || [];
+            var smartBinding = null;
+            
+            for (var i = 0; i < crmFields.length; i++) {
+                if (typeof crmFields[i] === 'string' && crmFields[i].indexOf('T') === 0) {
+                    smartBinding = crmFields[i];
+                    break;
+                }
+            }
+
+            var statusText = '';
             if (type === 'APPROVE') {
                 statusText = '✅ Документ СОГЛАСОВАН.';
             } else if (type === 'NOTES') {
-                statusText = '⚠️ Документ СОГЛАСОВАН С ЗАМЕЧАНИЯМИ:\n' + comment;
+                statusText = '⚠️ Документ СОГЛАСОВАН С ЗАМЕЧАНИЯМИ:\\n' + comment;
             } else if (type === 'REJECT') {
-                statusText = '❌ Документ ОТКЛОНЕН.\nПричина: ' + comment;
+                statusText = '❌ Документ ОТКЛОНЕН.\\nПричина: ' + comment;
             }
 
-            await callMethod('task.commentitem.add', [taskId, { POST_MESSAGE: statusText }]);
-
-            if (smartBinding) {
-                const parts = smartBinding.substring(1).split('_');
-                const entityTypeId = parts[0];
-                const itemId = parts[1];
-
-                await callMethod('crm.timeline.comment.add', {
-                    fields: {
-                        ENTITY_ID: itemId,
-                        ENTITY_TYPE: 'dynamic_' + entityTypeId,
-                        COMMENT: statusText
-                    }
-                });
-            }
-
-            await callMethod('tasks.task.complete', { id: taskId });
-            BX24.reloadWindow();
-
-        } catch (error) {
-            alert('Произошла ошибка: ' + (error.message || JSON.stringify(error)));
-            setButtonsLoading(false);
-        }
-    }
-
-    function callMethod(method, params) {
-        return new Promise((resolve, reject) => {
-            BX24.callMethod(method, params, function(result) {
-                if (result.error()) {
-                    reject(result.error());
-                } else {
-                    resolve(result.data());
+            BX24.callMethod('task.commentitem.add', [taskId, { POST_MESSAGE: statusText }], function() {
+                if (smartBinding) {
+                    var parts = smartBinding.substring(1).split('_');
+                    BX24.callMethod('crm.timeline.comment.add', {
+                        fields: {
+                            ENTITY_ID: parts[1],
+                            ENTITY_TYPE: 'dynamic_' + parts[0],
+                            COMMENT: statusText
+                        }
+                    });
                 }
+
+                BX24.callMethod('tasks.task.complete', { id: taskId }, function() {
+                    BX24.reloadWindow();
+                });
             });
         });
     }
 </script>
 
 </body>
-</html>
-  `);
+</html>`;
+
+  res.status(200).send(html);
 }
