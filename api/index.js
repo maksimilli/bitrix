@@ -39,16 +39,16 @@ export default function handler(req, res) {
         var options = BX24.placement.info().options;
         taskId = options ? options.taskId : null;
 
-        // Автоматическая регистрация кнопок при открытии страницы приложения
+        // Регистрируем в стандартной панели задачи TASK_TOP_PANEL
         BX24.callMethod(
             'placement.bind',
             {
-                'PLACEMENT': 'TASK_CARD_TOP_PANEL',
+                'PLACEMENT': 'TASK_TOP_PANEL',
                 'HANDLER': 'https://bitrix-bay.vercel.app',
                 'TITLE': 'Согласование'
             },
             function(res) {
-                console.log('РЕЗУЛЬТАТ РЕГИСТРАЦИИ КНОПОК:', res);
+                console.log('РЕЗУЛЬТАТ РЕГИСТРАЦИИ (TASK_TOP_PANEL):', res);
             }
         );
     });
