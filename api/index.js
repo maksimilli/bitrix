@@ -22,7 +22,7 @@ export default function handler(req, res) {
         .btn-approve { background-color: #2fc6f6; }
         .btn-notes { background-color: #f7a700; }
         .btn-reject { background-color: #ff5752; }
-        .btn-bind { background-color: #7bd500; margin-top: 15px; }
+        .btn-bind { background-color: #7bd500; margin-top: 10px; padding: 10px; }
     </style>
 </head>
 <body>
@@ -33,10 +33,11 @@ export default function handler(req, res) {
     <button class="btn btn-reject" onclick="onDecision('REJECT')">Отклонить</button>
 </div>
 
-<div style="margin-top: 20px; padding: 10px; border: 1px dashed #ccc; border-radius: 5px;">
-    <h4>Настройка привязки к задачам (Админка):</h4>
-    <button class="btn btn-bind" onclick="bindToTask()">1. Привязать кнопки к задачам</button>
-    <div id="log" style="margin-top: 10px; font-weight: bold; color: blue;"></div>
+<div style="margin-top: 20px; padding: 15px; border: 1px dashed #ccc; border-radius: 5px; background: #f9f9f9;">
+    <h4>Привязка к задачам:</h4>
+    <button class="btn btn-bind" onclick="tryBind('TASK_CARD_TOP_PANEL')">Привязать к TASK_CARD_TOP_PANEL</button>
+    <button class="btn btn-bind" style="background-color: #00acee;" onclick="tryBind('TASK_CARD_BEFORE_DESCRIPTION')">Привязать к TASK_CARD_BEFORE_DESCRIPTION</button>
+    <div id="log" style="margin-top: 15px; font-weight: bold; white-space: pre-wrap;"></div>
 </div>
 
 <script>
@@ -47,20 +48,27 @@ export default function handler(req, res) {
         taskId = options ? options.taskId : null;
     });
 
-    function bindToTask() {
-        document.getElementById('log').innerText = 'Отправка запроса...';
+    function tryBind(placementCode) {
+        var logDiv = document.getElementById('log');
+        logDiv.style.color = 'black';
+        logDiv.innerText = 'Пробуем привязать к ' + placementCode + '...';
+
         BX24.callMethod(
             'placement.bind',
             {
-                'PLACEMENT': 'TASK_CARD_TOP_PANEL',
+                'PLACEMENT': placementCode,
                 'HANDLER': 'https://bitrix-bay.vercel.app',
                 'TITLE': 'Согласование'
             },
             function(res) {
                 if (res.error()) {
-                    document.getElementById('log').innerText = 'Ошибка: ' + JSON.stringify(res.error());
+                    var err = res.error();
+                    var errMsg = err.ex ? (err.ex.error_description || err.ex.error) : JSON.stringify(err);
+                    logDiv.style.color = 'red';
+                    logDiv.innerText = 'ОШИБКА (' + placementCode + '): ' + errMsg;
                 } else {
-                    document.getElementById('log').innerText = 'УСПЕХ! Кнопки привязаны к задачам! Проверяйте в карточке задачи.';
+                    logDiv.style.color = 'green';
+                    logDiv.innerText = 'УСПЕХ! Кнопки успешно привязаны к ' + placementCode + '!';
                 }
             }
         );
