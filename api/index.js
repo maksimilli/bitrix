@@ -39,18 +39,28 @@ export default function handler(req, res) {
         var options = BX24.placement.info().options;
         taskId = options ? options.taskId : null;
 
-        // Регистрируем в стандартной панели задачи TASK_TOP_PANEL
-        BX24.callMethod(
-            'placement.bind',
-            {
-                'PLACEMENT': 'TASK_TOP_PANEL',
-                'HANDLER': 'https://bitrix-bay.vercel.app',
-                'TITLE': 'Согласование'
-            },
-            function(res) {
-                console.log('РЕЗУЛЬТАТ РЕГИСТРАЦИИ (TASK_TOP_PANEL):', res);
-            }
-        );
+        // 1. Получаем список доступных мест
+        BX24.callMethod('placement.get', {}, function(res) {
+            console.log('ВСЕ ДОСТУПНЫЕ PLACEMENT НА ПОРТАЛЕ:', res.data());
+
+            // Ищем места, связанные с задачами
+            var placements = res.data() || [];
+            var taskPlacement = placements.find(p => p.indexOf('TASK') !== -1) || 'TASK_CARD_TOP_PANEL';
+
+            console.log('Пробуем привязать к найденному месту:', taskPlacement);
+
+            BX24.callMethod(
+                'placement.bind',
+                {
+                    'PLACEMENT': taskPlacement,
+                    'HANDLER': 'https://bitrix-bay.vercel.app',
+                    'TITLE': 'Согласование'
+                },
+                function(bindRes) {
+                    console.log('РЕЗУЛЬТАТ ПРИВЯЗКИ:', bindRes);
+                }
+            );
+        });
     });
 
     function setButtonsLoading(loading) {
