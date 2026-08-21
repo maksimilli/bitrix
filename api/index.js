@@ -14,7 +14,7 @@ export default function handler(req, res) {
     <title>Согласование</title>
     <script src="//api.bitrix24.com/api/v1/"></script>
     <style>
-        body { margin: 0; padding: 5px; font-family: system-ui, -apple-system, sans-serif; }
+        body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; }
         .btn-container { display: flex; gap: 8px; align-items: center; }
         .btn { border: none; padding: 7px 14px; border-radius: 3px; font-weight: bold; font-size: 12px; cursor: pointer; color: #fff; transition: opacity 0.2s; }
         .btn:hover { opacity: 0.85; }
@@ -22,14 +22,21 @@ export default function handler(req, res) {
         .btn-approve { background-color: #2fc6f6; }
         .btn-notes { background-color: #f7a700; }
         .btn-reject { background-color: #ff5752; }
+        .btn-bind { background-color: #7bd500; margin-top: 15px; }
     </style>
 </head>
 <body>
 
 <div class="btn-container">
-    <button class="btn btn-approve" id="btn-approve" onclick="onDecision('APPROVE')">Согласовать</button>
-    <button class="btn btn-notes" id="btn-notes" onclick="onDecision('NOTES')">Согласовать с замечаниями</button>
-    <button class="btn btn-reject" id="btn-reject" onclick="onDecision('REJECT')">Отклонить</button>
+    <button class="btn btn-approve" onclick="onDecision('APPROVE')">Согласовать</button>
+    <button class="btn btn-notes" onclick="onDecision('NOTES')">Согласовать с замечаниями</button>
+    <button class="btn btn-reject" onclick="onDecision('REJECT')">Отклонить</button>
+</div>
+
+<div style="margin-top: 20px; padding: 10px; border: 1px dashed #ccc; border-radius: 5px;">
+    <h4>Настройка привязки к задачам (Админка):</h4>
+    <button class="btn btn-bind" onclick="bindToTask()">1. Привязать кнопки к задачам</button>
+    <div id="log" style="margin-top: 10px; font-weight: bold; color: blue;"></div>
 </div>
 
 <script>
@@ -38,30 +45,26 @@ export default function handler(req, res) {
     BX24.init(function() {
         var options = BX24.placement.info().options;
         taskId = options ? options.taskId : null;
-
-        // 1. Получаем список доступных мест
-        BX24.callMethod('placement.get', {}, function(res) {
-            console.log('ВСЕ ДОСТУПНЫЕ PLACEMENT НА ПОРТАЛЕ:', res.data());
-
-            // Ищем места, связанные с задачами
-            var placements = res.data() || [];
-            var taskPlacement = placements.find(p => p.indexOf('TASK') !== -1) || 'TASK_CARD_TOP_PANEL';
-
-            console.log('Пробуем привязать к найденному месту:', taskPlacement);
-
-            BX24.callMethod(
-                'placement.bind',
-                {
-                    'PLACEMENT': taskPlacement,
-                    'HANDLER': 'https://bitrix-bay.vercel.app',
-                    'TITLE': 'Согласование'
-                },
-                function(bindRes) {
-                    console.log('РЕЗУЛЬТАТ ПРИВЯЗКИ:', bindRes);
-                }
-            );
-        });
     });
+
+    function bindToTask() {
+        document.getElementById('log').innerText = 'Отправка запроса...';
+        BX24.callMethod(
+            'placement.bind',
+            {
+                'PLACEMENT': 'TASK_CARD_TOP_PANEL',
+                'HANDLER': 'https://bitrix-bay.vercel.app',
+                'TITLE': 'Согласование'
+            },
+            function(res) {
+                if (res.error()) {
+                    document.getElementById('log').innerText = 'Ошибка: ' + JSON.stringify(res.error());
+                } else {
+                    document.getElementById('log').innerText = 'УСПЕХ! Кнопки привязаны к задачам! Проверяйте в карточке задачи.';
+                }
+            }
+        );
+    }
 
     function setButtonsLoading(loading) {
         document.querySelectorAll('.btn').forEach(function(btn) { btn.disabled = loading; });
