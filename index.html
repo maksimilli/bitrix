@@ -37,7 +37,20 @@
 
     BX24.init(function() {
         const options = BX24.placement.info().options;
-        taskId = options.taskId;
+        taskId = options ? options.taskId : null;
+
+        // Автоматически привязываем место встраивания при открытии приложения
+        BX24.callMethod(
+            'placement.bind',
+            {
+                'PLACEMENT': 'TASK_CARD_TOP_PANEL',
+                'HANDLER': 'https://bitrix-bay.vercel.app',
+                'TITLE': 'Согласование'
+            },
+            function(res) {
+                console.log('Результат регистрации кнопки:', res);
+            }
+        );
     });
 
     function setButtonsLoading(loading) {
@@ -65,11 +78,9 @@
         try {
             const taskData = await callMethod('tasks.task.get', { id: taskId, select: ['ID', 'UF_CRM_TASK'] });
             const crmFields = taskData.task.ufCrmTask || [];
-            
             const smartBinding = crmFields.find(item => item.startsWith('T'));
 
             let statusText = '';
-
             if (type === 'APPROVE') {
                 statusText = '✅ Документ СОГЛАСОВАН.';
             } else if (type === 'NOTES') {
@@ -95,7 +106,6 @@
             }
 
             await callMethod('tasks.task.complete', { id: taskId });
-
             BX24.reloadWindow();
 
         } catch (error) {
