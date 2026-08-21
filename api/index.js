@@ -22,7 +22,7 @@ export default function handler(req, res) {
         .btn-approve { background-color: #2fc6f6; }
         .btn-notes { background-color: #f7a700; }
         .btn-reject { background-color: #ff5752; }
-        .btn-bind { background-color: #7bd500; margin-top: 10px; padding: 10px; }
+        .btn-bind { background-color: #7bd500; margin-top: 10px; padding: 10px; cursor: pointer; border: none; color: white; font-weight: bold; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -34,9 +34,8 @@ export default function handler(req, res) {
 </div>
 
 <div style="margin-top: 20px; padding: 15px; border: 1px dashed #ccc; border-radius: 5px; background: #f9f9f9;">
-    <h4>Привязка к задачам:</h4>
-    <button class="btn btn-bind" onclick="tryBind('TASK_CARD_TOP_PANEL')">Привязать к TASK_CARD_TOP_PANEL</button>
-    <button class="btn btn-bind" style="background-color: #00acee;" onclick="tryBind('TASK_CARD_BEFORE_DESCRIPTION')">Привязать к TASK_CARD_BEFORE_DESCRIPTION</button>
+    <h4>Привязка к задачам (Расширенная):</h4>
+    <button class="btn-bind" onclick="autoBind()">Запустить автоматическую привязку</button>
     <div id="log" style="margin-top: 15px; font-weight: bold; white-space: pre-wrap;"></div>
 </div>
 
@@ -48,30 +47,49 @@ export default function handler(req, res) {
         taskId = options ? options.taskId : null;
     });
 
-    function tryBind(placementCode) {
+    function autoBind() {
         var logDiv = document.getElementById('log');
         logDiv.style.color = 'black';
-        logDiv.innerText = 'Пробуем привязать к ' + placementCode + '...';
+        logDiv.innerText = 'Начинаем привязку...\n';
 
-        BX24.callMethod(
-            'placement.bind',
-            {
-                'PLACEMENT': placementCode,
-                'HANDLER': 'https://bitrix-bay.vercel.app',
-                'TITLE': 'Согласование'
-            },
-            function(res) {
-                if (res.error()) {
-                    var err = res.error();
-                    var errMsg = err.ex ? (err.ex.error_description || err.ex.error) : JSON.stringify(err);
-                    logDiv.style.color = 'red';
-                    logDiv.innerText = 'ОШИБКА (' + placementCode + '): ' + errMsg;
-                } else {
-                    logDiv.style.color = 'green';
-                    logDiv.innerText = 'УСПЕХ! Кнопки успешно привязаны к ' + placementCode + '!';
-                }
+        var placementsToTry = [
+            { code: 'TASK_CARD_TOP_PANEL', options: { GROUP_ID: 0 } },
+            { code: 'TASK_CARD_TOP_PANEL', options: {} },
+            { code: 'TASK_USER_FIELD', options: {} },
+            { code: 'TASK_CARD_BEFORE_DESCRIPTION', options: {} }
+        ];
+
+        function tryNext(index) {
+            if (index >= placementsToTry.length) {
+                logDiv.innerHTML += '<span style="color:red;">❌ Ни одно из мест не подошло.</span>';
+                return;
             }
-        );
+
+            var item = placementsToTry[index];
+            logDiv.innerText += 'Пробуем: ' + item.code + '... ';
+
+            BX24.callMethod(
+                'placement.bind',
+                {
+                    'PLACEMENT': item.code,
+                    'HANDLER': 'https://bitrix-bay.vercel.app',
+                    'TITLE': 'Согласование',
+                    'OPTIONS': item.options
+                },
+                function(res) {
+                    if (res.error()) {
+                        var err = res.error();
+                        var errMsg = err.ex ? (err.ex.error_description || err.ex.error) : JSON.stringify(err);
+                        logDiv.innerHTML += '<span style="color:red;">Ошибка (' + errMsg + ')</span>\n';
+                        tryNext(index + 1);
+                    } else {
+                        logDiv.innerHTML += '<span style="color:green;">УСПЕХ! Привязано к ' + item.code + '!</span>\n';
+                    }
+                }
+            );
+        }
+
+        tryNext(0);
     }
 
     function setButtonsLoading(loading) {
