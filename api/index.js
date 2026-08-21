@@ -16,26 +16,26 @@ export default function handler(req, res) {
     <style>
         body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; }
         .btn-container { display: flex; gap: 8px; align-items: center; }
-        .btn { border: none; padding: 7px 14px; border-radius: 3px; font-weight: bold; font-size: 12px; cursor: pointer; color: #fff; transition: opacity 0.2s; }
-        .btn:hover { opacity: 0.85; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .action-btn { border: none; padding: 7px 14px; border-radius: 3px; font-weight: bold; font-size: 12px; cursor: pointer; color: #fff; transition: opacity 0.2s; }
+        .action-btn:hover { opacity: 0.85; }
+        .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-approve { background-color: #2fc6f6; }
         .btn-notes { background-color: #f7a700; }
         .btn-reject { background-color: #ff5752; }
-        .btn-bind { background-color: #7bd500; margin-top: 10px; padding: 10px; cursor: pointer; border: none; color: white; font-weight: bold; border-radius: 3px; }
+        .bind-btn { background-color: #7bd500; margin-top: 10px; padding: 10px; cursor: pointer; border: none; color: white; font-weight: bold; border-radius: 3px; }
     </style>
 </head>
 <body>
 
 <div class="btn-container">
-    <button class="btn btn-approve" onclick="onDecision('APPROVE')">Согласовать</button>
-    <button class="btn btn-notes" onclick="onDecision('NOTES')">Согласовать с замечаниями</button>
-    <button class="btn btn-reject" onclick="onDecision('REJECT')">Отклонить</button>
+    <button class="action-btn btn-approve" onclick="onDecision('APPROVE')">Согласовать</button>
+    <button class="action-btn btn-notes" onclick="onDecision('NOTES')">Согласовать с замечаниями</button>
+    <button class="action-btn btn-reject" onclick="onDecision('REJECT')">Отклонить</button>
 </div>
 
 <div style="margin-top: 20px; padding: 15px; border: 1px dashed #ccc; border-radius: 5px; background: #f9f9f9;">
-    <h4>Привязка к задачам (Расширенная):</h4>
-    <button class="btn-bind" onclick="autoBind()">Запустить автоматическую привязку</button>
+    <h4>Привязка к задачам:</h4>
+    <button class="bind-btn" onclick="autoBind()">Запустить автоматическую привязку</button>
     <div id="log" style="margin-top: 15px; font-weight: bold; white-space: pre-wrap;"></div>
 </div>
 
@@ -53,28 +53,26 @@ export default function handler(req, res) {
         logDiv.innerText = 'Начинаем привязку...\n';
 
         var placementsToTry = [
-            { code: 'TASK_CARD_TOP_PANEL', options: { GROUP_ID: 0 } },
-            { code: 'TASK_CARD_TOP_PANEL', options: {} },
-            { code: 'TASK_USER_FIELD', options: {} },
-            { code: 'TASK_CARD_BEFORE_DESCRIPTION', options: {} }
+            'TASK_USER_FIELD',
+            'TASK_CARD_TOP_PANEL',
+            'TASK_VIEW_MODE'
         ];
 
         function tryNext(index) {
             if (index >= placementsToTry.length) {
-                logDiv.innerHTML += '<span style="color:red;">❌ Ни одно из мест не подошло.</span>';
+                logDiv.innerHTML += '<br><span style="color:red;">❌ Имена мест не поддерживаются напрямую через REST. Переходим к плану "Пользовательское поле"!</span>';
                 return;
             }
 
-            var item = placementsToTry[index];
-            logDiv.innerText += 'Пробуем: ' + item.code + '... ';
+            var pCode = placementsToTry[index];
+            logDiv.innerText += 'Пробуем: ' + pCode + '... ';
 
             BX24.callMethod(
                 'placement.bind',
                 {
-                    'PLACEMENT': item.code,
+                    'PLACEMENT': pCode,
                     'HANDLER': 'https://bitrix-bay.vercel.app',
-                    'TITLE': 'Согласование',
-                    'OPTIONS': item.options
+                    'TITLE': 'Согласование'
                 },
                 function(res) {
                     if (res.error()) {
@@ -83,7 +81,7 @@ export default function handler(req, res) {
                         logDiv.innerHTML += '<span style="color:red;">Ошибка (' + errMsg + ')</span>\n';
                         tryNext(index + 1);
                     } else {
-                        logDiv.innerHTML += '<span style="color:green;">УСПЕХ! Привязано к ' + item.code + '!</span>\n';
+                        logDiv.innerHTML += '<span style="color:green;">УСПЕХ! Привязано к ' + pCode + '!</span>\n';
                     }
                 }
             );
@@ -93,7 +91,7 @@ export default function handler(req, res) {
     }
 
     function setButtonsLoading(loading) {
-        document.querySelectorAll('.btn').forEach(function(btn) { btn.disabled = loading; });
+        document.querySelectorAll('.action-btn').forEach(function(btn) { btn.disabled = loading; });
     }
 
     function onDecision(type) {
