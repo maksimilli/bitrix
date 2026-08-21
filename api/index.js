@@ -14,35 +14,48 @@ export default function handler(req, res) {
     <title>Согласование</title>
     <script src="//api.bitrix24.com/api/v1/"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 10px; font-family: system-ui, -apple-system, sans-serif; background: #fff; }
-        .btn-container { display: flex; gap: 8px; align-items: center; position: relative; z-index: 9999; }
+        html, body {
+            margin: 0;
+            padding: 10px;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #ffffff;
+            width: 100%;
+            height: auto;
+            overflow: visible;
+        }
+        .btn-container { 
+            display: flex; 
+            gap: 8px; 
+            align-items: center; 
+            margin-bottom: 15px;
+        }
         .action-btn { 
             border: none; 
             padding: 8px 16px; 
             border-radius: 4px; 
             font-weight: bold; 
             font-size: 13px; 
-            cursor: pointer !important; 
-            color: #fff; 
-            transition: transform 0.1s, opacity 0.2s;
-            pointer-events: auto !important;
-            user-select: none;
+            cursor: pointer; 
+            color: #fff;
         }
-        .action-btn:active { transform: scale(0.96); }
         .btn-approve { background-color: #2fc6f6; }
         .btn-notes { background-color: #f7a700; }
         .btn-reject { background-color: #ff5752; }
+        
+        .bind-box {
+            padding: 15px; 
+            border: 1px dashed #ccc; 
+            border-radius: 5px; 
+            background: #f9f9f9;
+        }
         .bind-btn { 
             background-color: #7bd500; 
             padding: 10px 15px; 
-            cursor: pointer !important; 
+            cursor: pointer; 
             border: none; 
             color: white; 
             font-weight: bold; 
             border-radius: 4px; 
-            margin-top: 10px;
-            pointer-events: auto !important;
         }
     </style>
 </head>
@@ -54,22 +67,34 @@ export default function handler(req, res) {
     <button class="action-btn btn-reject" onclick="onDecision('REJECT')">Отклонить</button>
 </div>
 
-<div style="margin-top: 20px; padding: 15px; border: 1px dashed #ccc; border-radius: 5px; background: #f9f9f9; position: relative; z-index: 9999;">
-    <h4 style="margin-top: 0;">Привязка к задачам:</h4>
-    <button class="bind-btn" id="main-bind-btn" onclick="autoBind()">Запустить автоматическую привязку</button>
+<div class="bind-box">
+    <h4 style="margin-top:0;">Настройка связи с Битрикс24:</h4>
+    <button class="bind-btn" onclick="autoBind()">1. Запустить привязку</button>
     <div id="log" style="margin-top: 15px; font-weight: bold; white-space: pre-wrap; font-size: 13px;"></div>
 </div>
 
 <script>
     let taskId = null;
 
+    function resizeApp() {
+        if (typeof BX24 !== 'undefined') {
+            BX24.resizeWindow(document.documentElement.scrollWidth, 350);
+            BX24.fitWindow();
+        }
+    }
+
     if (typeof BX24 !== 'undefined') {
         BX24.init(function() {
             var options = BX24.placement.info().options;
             taskId = options ? options.taskId : null;
-            console.log('BX24 инициализирован успешно.');
+            resizeApp();
         });
     }
+
+    // Принудительный подгон размера через 0.5с после загрузки
+    window.addEventListener('load', function() {
+        setTimeout(resizeApp, 500);
+    });
 
     function autoBind() {
         var logDiv = document.getElementById('log');
@@ -77,7 +102,7 @@ export default function handler(req, res) {
         logDiv.innerText = 'Запуск проверки мест привязки...\n';
 
         if (typeof BX24 === 'undefined') {
-            logDiv.innerHTML = '<span style="color:red;">❌ Ошибка: Библиотека BX24 не загружена. Откройте приложение внутри Битрикс24.</span>';
+            logDiv.innerHTML = '<span style="color:red;">❌ BX24 не подгрузился.</span>';
             return;
         }
 
@@ -89,7 +114,7 @@ export default function handler(req, res) {
 
         function tryNext(index) {
             if (index >= placementsToTry.length) {
-                logDiv.innerHTML += '<br><span style="color:red;">❌ Ни одно из мест не поддерживается через стандартный placement.bind.</span>';
+                logDiv.innerHTML += '<br><span style="color:red;">❌ Нет поддерживаемых мест в этой редакции.</span>';
                 return;
             }
 
@@ -121,22 +146,22 @@ export default function handler(req, res) {
 
     function onDecision(type) {
         if (!taskId) {
-            alert('Приложение открыто вне задачи или ID задачи не найден.');
+            alert('Приложение открыто вне задачи.');
             return;
         }
 
         let comment = '';
         if (type === 'NOTES') {
-            comment = prompt('Укажите замечания к документу:');
+            comment = prompt('Укажите замечания:');
             if (comment === null) return;
         } else if (type === 'REJECT') {
-            comment = prompt('Укажите причину отклонения:');
+            comment = prompt('Укажите причину:');
             if (comment === null) return;
         }
 
         BX24.callMethod('tasks.task.get', { id: taskId, select: ['ID', 'UF_CRM_TASK'] }, function(resTask) {
             if (resTask.error()) {
-                alert('Ошибка получения задачи: ' + resTask.error());
+                alert('Ошибка: ' + resTask.error());
                 return;
             }
 
