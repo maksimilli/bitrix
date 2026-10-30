@@ -6,9 +6,15 @@
 
 ## Запуск без установки Python
 
-1. [Открыть готовый ноутбук в Google Colab](https://colab.research.google.com/github/maksimilli/bitrix/blob/osasud-30min-20261030/research/osasud-30min/OSASUD_30min_READY.ipynb).
+1. [Открыть быстрый ноутбук в Google Colab](https://colab.research.google.com/github/maksimilli/bitrix/blob/osasud-30min-20261030/research/osasud-30min/OSASUD_FAST.ipynb).
 2. При необходимости войти в Google и подключиться к вычислительной среде.
-3. Выполнять ячейки сверху вниз кнопками слева. Данные уже встроены внутрь.
+3. Выполнять ячейки сверху вниз кнопками слева. По умолчанию открываются готовые
+   результаты: не запускаются обучение, bootstrap и повторное построение рисунков.
+   Первая ячейка загружает небольшой пакет analysis_support.zip (~1,8 МБ)
+   и показывает прогресс. Сам быстрый ноутбук занимает около 22 КБ.
+4. Для доступа к сырым записям включить LOAD_RAW=True: загрузится архив 10,5 МБ.
+   Для повторного расчёта включить RECOMPUTE_FEATURES и RECOMPUTE.
+   Полный повторный расчёт медленнее, для просмотра результатов не требуется.
 
 [Скачать ноутбук](https://github.com/maksimilli/bitrix/raw/refs/heads/osasud-30min-20261030/research/osasud-30min/OSASUD_30min_READY.ipynb)
 — около 14,2 МБ.
